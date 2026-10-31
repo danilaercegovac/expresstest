@@ -99,6 +99,41 @@ export default function (express, bodyParser, createReadStream, crypto, http) {
     app.get('/req/', handleRequest);
     app.post('/req/', handleRequest);
 
+    app.post('/insert/', async (req, res) => {
+        const { login, password, URL } = req.body;
+
+        if (!login || !password || !URL) {
+            return res.status(400).type('text/plain').send('Необходимо передать login, password и URL');
+        }
+
+        let client;
+
+        try {
+            const MongoClient = app.locals.MongoClient;
+
+            client = new MongoClient(URL);
+
+            await client.connect();
+
+            const db = client.db('readusers');
+
+            await db.collection('users').insertOne({
+                login: String(login),
+                password: String(password)
+            });
+
+            res.type('text/plain').send('Документ успешно добавлен');
+        } catch {
+            if (!res.headersSent) {
+                res.status(500).type('text/plain').send('Ошибка записи в MongoDB');
+            }
+        } finally {
+            if (client) {
+                await client.close().catch(() => {});
+            }
+        }
+    });
+    
     app.all(/.*/, (req, res) => {
         res.type('text/plain').send('danilaercegovac_3');
     });
